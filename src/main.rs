@@ -1,14 +1,15 @@
-use anyhow::{bail, Context, Result};
-use env_logger::Env;
-
 use crate::{
     message_details::MessageDetails, stream_details::StreamDetails, utils::chat_messages_do,
     youtube_service::YouTubeClient,
 };
+use anyhow::{bail, Context, Result};
+use env_logger::Env;
+use toxic_service::ToxicService;
 
 mod message_details;
 mod stream_details;
 mod token_store;
+mod toxic_service;
 mod utils;
 mod youtube_service;
 
@@ -16,6 +17,9 @@ mod youtube_service;
 async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
     env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
+
+    let toxic_service = ToxicService::new("127.0.0.1".into(), 8888)
+        .with_context(|| "Failed to create Toxic Service")?;
 
     let yt = YouTubeClient::create("ytmod".into(), "tokens".into(), "client_secret.json".into())
         .await
@@ -43,7 +47,7 @@ async fn main() -> Result<()> {
         let message =
             MessageDetails::from_message(message).context("Failed to get message details")?;
 
-        if message.contents.starts_with("DELETEME") {
+        if toxic_service.is_toxic(&message.contents).await? {
             if let Err(err) = yt
                 .delete_message_with_reason(&stream.live_chat_id, &message.id, "VOLUNTARY EXILE")
                 .await
