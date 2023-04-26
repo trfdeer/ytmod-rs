@@ -18,6 +18,8 @@ async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
     env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
 
+    let moderator = std::env::var("MODERATOR").expect("Error: variable `MODERATOR` not set.");
+
     let toxic_service = ToxicService::new("127.0.0.1".into(), 8888)
         .with_context(|| "Failed to create Toxic Service")?;
 
@@ -41,6 +43,7 @@ async fn main() -> Result<()> {
     println!("{:=<32}", "");
     println!("Stream Title: {}", stream.title);
     println!("Stream Description: {}", stream.description);
+    println!("Moderated by: {moderator}");
     println!("Link: https://www.youtube.com/watch?v={}", stream.id);
     println!("{:=<32}", "");
 
@@ -53,27 +56,27 @@ async fn main() -> Result<()> {
         println!("Message from: {}", message.author_name);
         println!("Message text: {}", message.contents);
 
-        if message.author_name != "Tuhin Tarafder" {
+        if message.author_name != moderator {
             match toxic_service.is_toxic(&message.contents).await {
                 Ok(is_toxic) => {
                     println!("Is Toxic: {is_toxic}");
                     if is_toxic {
-                    match yt
-                        .delete_message_with_reason(
-                            &stream.live_chat_id,
-                            &message.id,
-                            "Trash taken out",
-                        )
-                        .await
-                    {
-                        Ok(_) => {
-                            log::info!("Deleted comment!");
-                        }
-                        Err(err) => {
-                            log::error!("Failed to delete message: {err}",);
+                        match yt
+                            .delete_message_with_reason(
+                                &stream.live_chat_id,
+                                &message.id,
+                                "Trash taken out",
+                            )
+                            .await
+                        {
+                            Ok(_) => {
+                                log::info!("Deleted comment!");
+                            }
+                            Err(err) => {
+                                log::error!("Failed to delete message: {err}",);
+                            }
                         }
                     }
-                }
                 }
                 Err(err) => {
                     log::error!("Failed to get toxicity report: {err}",);
