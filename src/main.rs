@@ -38,28 +38,48 @@ async fn main() -> Result<()> {
     let stream =
         StreamDetails::from_broadcast(streams.remove(0)).context("Failed to get stream details")?;
 
-    println!("Selecting stream: ");
-    println!("Title: {}", stream.title);
-    println!("Description: {}", stream.description);
+    println!("{:=<32}", "");
+    println!("Stream Title: {}", stream.title);
+    println!("Stream Description: {}", stream.description);
     println!("Link: https://www.youtube.com/watch?v={}", stream.id);
+    println!("{:=<32}", "");
 
     chat_messages_do(&yt, &stream, Some(5000), |message| async {
         let message =
             MessageDetails::from_message(message).context("Failed to get message details")?;
 
-        if toxic_service.is_toxic(&message.contents).await? {
-            if let Err(err) = yt
-                .delete_message_with_reason(&stream.live_chat_id, &message.id, "VOLUNTARY EXILE")
-                .await
-            {
-                log::error!("Failed to delete message {:?}: {err}", message.contents);
+        println!("\n{:-<16}", "");
+        println!("Message time: {}", message.time_sent);
+        println!("Message from: {}", message.author_name);
+        println!("Message text: {}", message.contents);
+
+        if message.author_name != "Tuhin Tarafder" {
+            match toxic_service.is_toxic(&message.contents).await {
+                Ok(is_toxic) => {
+                    println!("Is Toxic: {is_toxic}");
+                    if is_toxic {
+                    match yt
+                        .delete_message_with_reason(
+                            &stream.live_chat_id,
+                            &message.id,
+                            "Trash taken out",
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            log::info!("Deleted comment!");
+                        }
+                        Err(err) => {
+                            log::error!("Failed to delete message: {err}",);
+                        }
+                    }
+                }
+                }
+                Err(err) => {
+                    log::error!("Failed to get toxicity report: {err}",);
+                }
             }
         }
-
-        println!(
-            "===== Message by {} at {}: {}",
-            message.author_name, message.time_sent, message.contents
-        );
         Ok(())
     })
     .await?;

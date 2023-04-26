@@ -34,7 +34,7 @@ impl TokenStorage for JsonTokenStore {
     async fn set(&self, scopes: &[&str], token: TokenInfo) -> anyhow::Result<()> {
         let data = serde_json::to_string(&token).unwrap();
 
-        log::info!("Storing token for scopes {:?}", scopes);
+        log::trace!("Storing token for scopes {:?}", scopes);
 
         let res = fs::OpenOptions::new()
             .create(true)
@@ -53,7 +53,7 @@ impl TokenStorage for JsonTokenStore {
             let mut json_string = String::new();
             if f.read_to_string(&mut json_string).is_ok() {
                 if let Ok(token) = serde_json::from_str::<TokenInfo>(&json_string) {
-                    log::info!("Reading token for scopes {:?}", target_scopes);
+                    log::trace!("Reading token for scopes {:?}", target_scopes);
                     return Some(token);
                 }
             }
